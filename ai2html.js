@@ -2459,7 +2459,7 @@ function convertAiTextStyle(aiStyle) {
     cssStyle["line-height"] = aiStyle.leading + "px";
     // Fix for line height error affecting point text in Chrome/Safari at certain browser zooms.
     if (aiStyle.frameType == 'point') {
-      cssStyle.height = cssStyle["line-height"];
+     // cssStyle.height = cssStyle["line-height"];
     }
   }
   // if (('opacity' in aiStyle) && aiStyle.opacity < 100) {
@@ -2672,6 +2672,8 @@ function getTextFrameCss(thisFrame, abBox, pgData) {
   var htmlW = htmlBox.width;
   var htmlH = htmlBox.height + marginTopPx + marginBottomPx;
   var alignment, v_align, vertAnchorPct;
+  var existingTransform;
+  var newTransform;
 
   if (firstPgStyle.justification == "Justification.LEFT") {
     alignment = "left";
@@ -2712,7 +2714,19 @@ function getTextFrameCss(thisFrame, abBox, pgData) {
     // https://css-tricks.com/centering-in-the-unknown/
     // TODO: consider: http://zerosixthree.se/vertical-align-anything-with-just-3-lines-of-css/
     styles += "top:" + formatCssPct(htmlT + marginTopPx + htmlBox.height / 2, abBox.height) + ';';
-    styles += "margin-top:-" + roundTo(marginTopPx + htmlBox.height / 2, 1) + 'px;';
+    //styles += "margin-top:-" + roundTo(marginTopPx + htmlBox.height / 2, 1) + 'px;';
+    /* setting margin-top to negative half the box height to center works if the size of the
+     * text never changes but if the user has set text size to adjust according to the viewport size
+     * this alignment will be off. fix here utilizes flexbox to center vertical. should be ok gte IE10
+     * also see line 2462, removes setting pixel height on point <p>s
+     */
+    existingTransform = styles.match(/transform:(.*?);/);
+    if (existingTransform){
+      newTransform = 'transform:' + ' translate(0, -50%) ' + existingTransform[1] + ';';
+    } else {
+      newTransform = 'transform: translate(0, -50%);';
+    }
+    styles += "display:flex;flex-direction:column;justify-content:center;" + newTransform;
   } else {
     styles += "top:" + formatCssPct(htmlT, abBox.height) + ';';
   }
