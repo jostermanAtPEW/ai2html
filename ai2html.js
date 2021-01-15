@@ -2563,11 +2563,17 @@ function getTextFramesByArtboard(ab, masks, settings) {
   }
   return candidateFrames;
 }
-
+function findParentLayerName(object){
+  return object.parent.typename == 'Layer' ? object.parent.name : findParentLayerName(object.parent);
+  /*return object.parent.typename;*/
+}
+function textFrameIsNotUserExcluded(frame) {
+  return (findParentLayerName(frame).charAt(0) !== '-');
+}
 function findTextFramesToRender(frames, artboardRect) {
   var selected = [];
   for (var i=0; i<frames.length; i++) {
-    if (textFrameIsRenderable(frames[i], artboardRect)) {
+    if (textFrameIsRenderable(frames[i], artboardRect) && textFrameIsNotUserExcluded(frames[i])) {
       selected.push(frames[i]);
     }
   }
