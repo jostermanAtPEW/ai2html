@@ -3314,6 +3314,9 @@ function replaceSvgIds(svg, prefix) {
 // ab: artboard (assumed to be the active artboard)
 function captureArtboardImage(imgName, ab, masks, settings) {
   var formats = settings.image_format;
+  if (ab.name.split(':')[0] == 'static' && settings.override_static_svg !== true){
+    formats.unshift('svg');
+  }
   var imgHtml;
 
   if (!formats.length) {
