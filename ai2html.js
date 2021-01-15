@@ -2553,7 +2553,11 @@ function getClippedTextFramesByArtboard(ab, masks) {
 
 // Get array of TextFrames belonging to an artboard, excluding text that
 // overlaps the artboard but is hidden by a clipping mask
+// ** also excludes all text frames in artboards named 'static' **
 function getTextFramesByArtboard(ab, masks, settings) {
+  if ( ab.name.split(':')[0] == 'static' ){
+    return [];
+  }
   var candidateFrames = findTextFramesToRender(doc.textFrames, ab.artboardRect);
   var excludedFrames = getClippedTextFramesByArtboard(ab, masks);
   candidateFrames = arraySubtract(candidateFrames, excludedFrames);
@@ -2565,7 +2569,6 @@ function getTextFramesByArtboard(ab, masks, settings) {
 }
 function findParentLayerName(object){
   return object.parent.typename == 'Layer' ? object.parent.name : findParentLayerName(object.parent);
-  /*return object.parent.typename;*/
 }
 function textFrameIsNotUserExcluded(frame) {
   return (findParentLayerName(frame).charAt(0) !== '-');
