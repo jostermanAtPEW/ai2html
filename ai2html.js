@@ -368,6 +368,7 @@ var startTime = +new Date();
 
 var textFramesToUnhide = [];
 var objectsToRelock = [];
+var artboardNames = [];
 
 var scriptEnvironment = '';
 var docSettings;
@@ -1194,10 +1195,9 @@ function isTestedIllustratorVersion(version) {
 }
 
 function validateArtboardNames(settings) {
-  var names = [];
   forEachUsableArtboard(function(ab) {
     var name = getArtboardName(ab);
-    var isDupe = contains(names, name);
+    var isDupe = contains(artboardNames, name);
     if (isDupe) {
       // kludge: modify settings if same-name artboards are found
       // (used to prevent duplicate image names)
@@ -1209,7 +1209,7 @@ function validateArtboardNames(settings) {
       }
 
     }
-    names.push(name);
+    artboardNames.push(name);
   });
 }
 
@@ -2553,9 +2553,9 @@ function getClippedTextFramesByArtboard(ab, masks) {
 
 // Get array of TextFrames belonging to an artboard, excluding text that
 // overlaps the artboard but is hidden by a clipping mask
-// ** also excludes all text frames in artboards named 'static' **
+// ** also excludes all text frames in artboards named 'print' **
 function getTextFramesByArtboard(ab, masks, settings) {
-  if ( ab.name.split(':')[0] == 'static' ){
+  if ( ab.name.split(':')[0] == 'print' || ab.name.split(':')[0] == 'full' ){
     return [];
   }
   var candidateFrames = findTextFramesToRender(doc.textFrames, ab.artboardRect);
@@ -2681,8 +2681,8 @@ function getTextFrameCss(thisFrame, abBox, pgData) {
   var htmlW = htmlBox.width;
   var htmlH = htmlBox.height + marginTopPx + marginBottomPx;
   var alignment, v_align, vertAnchorPct;
-  var existingTransform;
-  var newTransform;
+  var transforms;
+  var match;
 
   if (firstPgStyle.justification == "Justification.LEFT") {
     alignment = "left";
@@ -2729,13 +2729,13 @@ function getTextFrameCss(thisFrame, abBox, pgData) {
      * this alignment will be off. fix here utilizes flexbox to center vertical. should be ok gte IE10
      * also see line 2462, removes setting pixel height on point <p>s
      */
-    existingTransform = styles.match(/transform:(.*?);/);
-    if (existingTransform){
-      newTransform = 'transform:' + ' translate(0, -50%) ' + existingTransform[1] + ';';
+    transforms = styles.match(/transform:([^;]+);/);
+    if (transforms){
+      transforms = 'translate(0, -50%) ' + transforms[1];
     } else {
-      newTransform = 'transform: translate(0, -50%);';
+      transforms = 'translate(0, -50%)';
     }
-    styles += "display:flex;flex-direction:column;justify-content:center;" + newTransform;
+    styles += "display:flex;flex-direction:column;justify-content:center;transform:" + transforms + ';';
   } else {
     styles += "top:" + formatCssPct(htmlT, abBox.height) + ';';
   }
@@ -2745,7 +2745,19 @@ function getTextFrameCss(thisFrame, abBox, pgData) {
     styles += "left:" + formatCssPct(htmlL + htmlBox.width / 2, abBox.width) + ';';
     // using pct margin causes problems in a dynamic layout, switching to pixels
     // styles += "margin-left:" + formatCssPct(-htmlW / 2, abBox.width);
-    styles += "margin-left:-" + roundTo(htmlW / 2, 1) + 'px;';
+    //styles += "margin-left:-" + roundTo(htmlW / 2, 1) + 'px;';
+    if ( !transforms ){
+      match = styles.match(/transform:([^;]+);/);
+      if (match) {
+        transforms = match[1];
+      } 
+    }
+    if (transforms){
+      transforms = 'translate(-50%, 0) ' + transforms;
+    } else {
+      transforms = 'translate(-50%, 0)';
+    }
+    styles += 'transform:' + transforms + ';';
   } else {
     styles += "left:" + formatCssPct(htmlL, abBox.width) + ';';
   }
@@ -3314,7 +3326,7 @@ function replaceSvgIds(svg, prefix) {
 // ab: artboard (assumed to be the active artboard)
 function captureArtboardImage(imgName, ab, masks, settings) {
   var formats = settings.image_format;
-  if (ab.name.split(':')[0] == 'static' && settings.override_static_svg !== true){
+  if (ab.name.split(':')[0] == 'print' && settings.override_static_svg !== true){
     formats.unshift('svg');
   }
   var imgHtml;
@@ -3674,7 +3686,7 @@ function assignArtboardContentToFile(name, abData, outputArr) {
 
 function generateArtboardDiv(ab, breakpoints, settings) {
   var divId = nameSpace + getArtboardFullName(ab, settings);
-  var classnames = nameSpace + "artboard";
+  var classnames = nameSpace + "artboard " + getArtboardName(ab);
   var widthRange = getArtboardWidthRange(ab);
   var abBox = convertAiBounds(ab.artboardRect);
   var inlineStyle = "";
@@ -3992,6 +4004,9 @@ function generateOutputHtml(content, pageName, settings) {
   var containerId = nameSpace + pageName + "-box";
   var textForFile, html, js, css, commentBlock;
   var htmlFileDestinationFolder;
+  var hasArtboardNames = map(artboardNames, function(name){
+    return 'has-' + name;
+  });
 
   progressBar.setTitle('Writing HTML output...');
 
@@ -4018,7 +4033,7 @@ function generateOutputHtml(content, pageName, settings) {
   }
 
   // HTML
-  html = '<div id="' + containerId + '" class="ai2html ai2html-box-v5">\r';
+  html = '<div id="' + containerId + '" class="ai2html ai2html-box-v5 ' + hasArtboardNames.join(' ') + '">\r';
   if (linkSrc) {
     // optional link around content
     html += "\t<a class='" + nameSpace + "ai2htmlLink' href='" + linkSrc + "'>\r";
