@@ -2440,6 +2440,7 @@ function getBlendMode(obj) {
 function convertAiTextStyle(aiStyle) {
   var cssStyle = {};
   var fontInfo, tmp;
+  var textFactor = docSettings.preserve_text_sizes == 'true' ? docSettings.print_text_factor : 1;
   if (aiStyle.aifont) {
     fontInfo = findFontInfo(aiStyle.aifont);
     if (fontInfo.family) {
@@ -2453,10 +2454,10 @@ function convertAiTextStyle(aiStyle) {
     }
   }
   if (aiStyle.size > 0) {
-    cssStyle["font-size"] = aiStyle.size + "px";
+    cssStyle["font-size"] = (aiStyle.size * textFactor) + "px";
   }
   if ('leading' in aiStyle) {
-    cssStyle["line-height"] = aiStyle.leading + "px";
+    cssStyle["line-height"] = ( aiStyle.leading * textFactor) + "px";
     // Fix for line height error affecting point text in Chrome/Safari at certain browser zooms.
     if (aiStyle.frameType == 'point') {
      // cssStyle.height = cssStyle["line-height"];
@@ -2555,7 +2556,7 @@ function getClippedTextFramesByArtboard(ab, masks) {
 // overlaps the artboard but is hidden by a clipping mask
 // ** also excludes all text frames in artboards named 'print' **
 function getTextFramesByArtboard(ab, masks, settings) {
-  if ( ab.name.split(':')[0] == 'print' || ab.name.split(':')[0] == 'full' ){
+  if ( (ab.name.split(':')[0] == 'print' || ab.name.split(':')[0] == 'full') && settings.override_auto_static !== 'true' ){
     return [];
   }
   var candidateFrames = findTextFramesToRender(doc.textFrames, ab.artboardRect);
@@ -3326,7 +3327,7 @@ function replaceSvgIds(svg, prefix) {
 // ab: artboard (assumed to be the active artboard)
 function captureArtboardImage(imgName, ab, masks, settings) {
   var formats = settings.image_format;
-  if (ab.name.split(':')[0] == 'print' && settings.override_static_svg !== true){
+  if (ab.name.split(':')[0] == 'print' && settings.override_static_svg !== 'true'){
     formats.unshift('svg');
   }
   var imgHtml;
@@ -4033,7 +4034,7 @@ function generateOutputHtml(content, pageName, settings) {
   }
 
   // HTML
-  html = '<div id="' + containerId + '" class="ai2html ai2html-box-v5 ' + hasArtboardNames.join(' ') + '">\r';
+  html = '<div id="' + containerId + '" class="ai2html ai2html-box-v5 ' + hasArtboardNames.join(' ') + (settings.preserve_text_sizes == 'true' ? ' preserve-text-sizes' : '') + '">\r';
   if (linkSrc) {
     // optional link around content
     html += "\t<a class='" + nameSpace + "ai2htmlLink' href='" + linkSrc + "'>\r";
