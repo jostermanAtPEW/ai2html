@@ -46,7 +46,7 @@ function main() {
 // - Add an entry to CHANGELOG.md
 // - Run 'npm publish' to create a new GitHub release
 var scriptVersion = "0.81.5";
-
+var currentArtboardName;
 // ================================================
 // ai2html and config settings
 // ================================================
@@ -499,6 +499,7 @@ function render(settings, customBlocks) {
   var fileContentArr = [];
 
   forEachUsableArtboard(function(activeArtboard, abIndex) {
+    currentArtboardName = getArtboardName(activeArtboard);
     var abSettings = getArtboardSettings(activeArtboard);
     var docArtboardName = getDocumentArtboardName(activeArtboard);
     var textFrames, textData, imageData;
@@ -536,7 +537,7 @@ function render(settings, customBlocks) {
     // Finish generating artboard HTML and CSS
     //=====================================
 
-    artboardContent.html += "\r\t<!-- Artboard: " + getArtboardName(activeArtboard) + " -->\r" +
+    artboardContent.html += "\r\t<!-- Artboard: " + currentArtboardName + " -->\r" +
        generateArtboardDiv(activeArtboard, breakpoints, settings) +
        imageData.html +
        textData.html +
@@ -2440,7 +2441,7 @@ function getBlendMode(obj) {
 function convertAiTextStyle(aiStyle) {
   var cssStyle = {};
   var fontInfo, tmp;
-  var textFactor = docSettings.preserve_text_sizes == 'true' ? docSettings.print_text_factor : 1;
+  var textFactor = ( docSettings.preserve_print_text_sizes == 'true' && currentArtboardName == 'print' ) ? docSettings.print_text_factor : 1;
   if (aiStyle.aifont) {
     fontInfo = findFontInfo(aiStyle.aifont);
     if (fontInfo.family) {
@@ -2684,6 +2685,7 @@ function getTextFrameCss(thisFrame, abBox, pgData) {
   var alignment, v_align, vertAnchorPct;
   var transforms;
   var match;
+  var shadow;
 
   if (firstPgStyle.justification == "Justification.LEFT") {
     alignment = "left";
@@ -2708,8 +2710,11 @@ function getTextFrameCss(thisFrame, abBox, pgData) {
     v_align = "middle";
     htmlW += 22; // add a bit of extra width to try to prevent overflow
   }
-
+  if (thisFrameAttributes.shadow){
+    shadow = thisFrameAttributes.shadow;
+  }
   if (thisFrameAttributes.valign) {
+    
     // override default vertical alignment
     v_align = thisFrameAttributes.valign;
     if (v_align == "center") {
@@ -2762,7 +2767,10 @@ function getTextFrameCss(thisFrame, abBox, pgData) {
   } else {
     styles += "left:" + formatCssPct(htmlL, abBox.width) + ';';
   }
-
+  /* text shadows from shadow attribute */
+  if (shadow) {
+    styles += 'text-shadow: 1px 1px 1px ' + shadow + ', ' + '-1px 1px 1px ' + shadow + ', ' + '-1px -1px 1px ' + shadow + ', ' + '1px -1px 1px ' + shadow + ';';
+  }
   classes = nameSpace + getLayerName(thisFrame.layer) + " " + nameSpace + "aiAbs";
   if (thisFrame.kind == TextType.POINTTEXT) {
     classes += ' ' + nameSpace + 'aiPointText';
@@ -4034,7 +4042,7 @@ function generateOutputHtml(content, pageName, settings) {
   }
 
   // HTML
-  html = '<div id="' + containerId + '" class="ai2html ai2html-box-v5 ' + hasArtboardNames.join(' ') + (settings.preserve_text_sizes == 'true' ? ' preserve-text-sizes' : '') + '">\r';
+  html = '<div id="' + containerId + '" class="ai2html ai2html-box-v5 ' + hasArtboardNames.join(' ') + (settings.preserve_print_text_sizes == 'true' ? ' preserve-print-text-sizes' : '') + '">\r';
   if (linkSrc) {
     // optional link around content
     html += "\t<a class='" + nameSpace + "ai2htmlLink' href='" + linkSrc + "'>\r";
